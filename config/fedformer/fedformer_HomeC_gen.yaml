@@ -1,0 +1,289 @@
+date_config:
+  case_1: &date_config_case1
+    fit:                                   # Specify the start date and end date.
+      start: "2014-01-01 00:00"
+      end:  "2014-12-31 00:00"
+    val:
+      start: "2015-01-01 00:00"
+      end:  "2015-01-31 00:00"
+    test:
+      start: "2015-02-01 00:00"
+      end:  "2015-02-28 00:00"
+  case_2: &date_config_case2
+    fit:                                   # Specify the start date and end date.
+      start: "2014-01-01 00:00"
+      end:  "2014-12-31 00:00"
+    val:
+      start: "2015-04-01 00:00"
+      end:  "2015-04-30 00:00"
+    test:
+      start: "2015-05-01 00:00"
+      end:  "2015-05-31 00:00"
+  case_3: &date_config_case3
+    fit:                                   # Specify the start date and end date.
+      start: "2014-01-01 00:00"
+      end:  "2014-12-31 00:00"
+    val:
+      start: "2015-07-01 00:00"
+      end:  "2015-07-31 00:00"
+    test:
+      start: "2015-08-01 00:00"
+      end:  "2015-08-31 00:00"
+  case_4: &date_config_case4
+    fit:                                   # Specify the start date and end date.
+      start: "2014-01-01 00:00"
+      end:  "2014-12-31 00:00"
+    val:
+      start: "2015-10-01 00:00"
+      end:  "2015-10-31 00:00"
+    test:
+      start: "2015-11-01 00:00"
+      end:  "2015-11-30 00:00"
+  case_5: &date_config_case5
+    fit:
+      start: "2014-01-01 00:00"
+      end: "2016-01-01 00:00"
+    val:
+      start: "2016-01-01 00:00"
+      end: "2016-05-01 00:00"
+    test:
+      start: "2016-05-01 00:00"
+      end: "2016-10-01 00:00"
+
+data:                                          # Configuration about the datetime interval and features to use.
+  dataset_name: HomeC
+  date_range:                                # When using ETTm1 dataset, no need to specify the range of start/end date.
+    <<: *date_config_case5
+    # fit:                                   # Specify the start date and end date.
+    #   start: "2014-01-01 00:00"
+    #   end:  "2014-12-31 00:00"
+    # val:
+    #   start: "2015-01-01 00:00"
+    #   end:  "2015-01-31 00:00"
+    # test:
+    #   start: "2015-02-01 00:00"
+    #   end:  "2015-02-28 00:00"
+  features:    &features                                # Specify the features to use
+    - 'humidity'
+    - 'visibility'
+    - 'pressure'
+    - 'windSpeed'
+    - 'cloudCover'
+    - 'windBearing'
+    - 'dewPoint'
+    - 'precipProbability'
+    - 'month'
+    - 'day'
+    - 'weekday'
+    - 'weekofyear'
+    - 'hour'
+    - 'minute'
+
+  target:      &target                                # Specify the target to use
+    - gen
+  train_with_tartget_itself: True
+  time_series_config:
+    sequence_length: 144                        # Length of input series
+    label_length: 72                           # Length of label in input series' tail
+    predict_length: 48                         # Length of predict series
+    features: *features
+    target: *target
+  preprocessing:
+    freq: 'h'
+    train_test_split: 0.2                      # Must be a float between 0.0 and 1.0
+    shuffle: True                              # Specify shuffle or not
+    seed: 42                                   # Random Seed for data shuffling
+    standardlize_method: "MinMax"              # Specify the method to standardlize the data.'windows
+    if_apply_time_encoding: True              # Specify whether applying encoding to datetime.
+  dataloader:
+    num_workers: 6
+
+model:                                         # Configuration about the structure of model and the hyperparameters.
+  model_name: &model_name HomeC-test-FEDformer                        # Model name for logging
+  model_version: &model_version run1         # Model version for logging
+  model_framework: "FEDformer"                # Specify the model framework to use
+  hyperparameters:                             # Config hyperparameter here
+    lr: 0.001
+    optimizer: "adam"
+    loss_fn: "MSELoss"
+    val_loss_fn:
+    delta: 0.1                                  # only for Huber loss
+    batch_size: 32
+    lr_scheduler:
+      name: None                               # Must Provide a name of learning rate scheduler. Leave the name to `None` when using lightning auto tunning.
+      config:                                  # Please handle the detail by yourself.
+  model_internal_structure:                    # Enable this section when required.
+    common: 
+      n_heads: 8                               # Number of heads
+      d_model: 512                             # Depth of model
+      dropout: 0.05                            # Dropout rate
+      factor: 3                                # Attention factor proposed in origin paper
+      fcn_dim: 2048                            # Dimension of FCN
+      itr: 1                                   # Number of experiment times
+      activation: gelu
+      kernel_size: 24
+      output_attention: False
+      output_size: 1                           # Equivalent to `c_out` in origin codex.
+      version: "Fourier"                       # Fourier mode or wavelet mode
+    encoder:
+      encoder_layers: 4
+      encoder_input_size: 15
+    decoder:
+      decoder_layers: 3
+      decoder_input_size: 15
+    
+    # stackedLinearBlock:                        # Example Configuration
+      # depth: 7                                 # The number of component of stacked linear block.
+      # input_output_channel:                    # Must as much as the depth declared before.
+        # layer_1:
+          # input: 1024
+          # output: 2048
+        # layer_2:
+        #  ...
+
+
+trainer:                                       # Configuration about training
+  max_epochs: &epochs 20                              # Specify the maximum epochs to run
+  fast_dev_run: False                          
+  accelerator: "gpu"                           # Must be "CPU" or "GPU"
+  num_acc_device: 1                            # Specify the number of accelerator device, ignore when using CPU.
+  enable_fp16: False                           # Specify whether using FP16 in training
+  loggers:                                     # Specify the name of logger. (e.g. CSVLogger, etc.,)
+    log_dir: &logDir "./log"                   # Base directory to the logs
+    CSVLogger:                                 # CSVLogger provided by pytorch-lightning
+      save_dir: [*logDir, "csv_log"]           
+      name: *model_name
+      version: *model_version
+    TensorBoardLogger:                         # TensorBoardLogger provided by pytorch-lightning
+      save_dir: [*logDir, "tensorboard"]
+      log_graph : True
+      name: *model_name
+      version: *model_version
+  callbacks:
+    EarlyStopping:
+      monitor: "val_loss"
+      patience: 3
+      verbose: True
+      mode: "min"
+      # min_delta: 0.001
+    RichModelSummary:
+      max_depth: 4                             # A value of 0 turns the layer summary off
+    ModelCheckpoint:
+      every_n_epochs: 1
+      monitor: val_loss                        # Moniter for the callback function
+      every_n_epochs: 1
+      save_on_train_epoch_end: True
+      save_top_k: 1
+      filename: "{epoch:02d}-{val_loss:.2f}"
+    LearningRateMonitor:
+      logging_interval: "epoch"
+      log_momentum: True
+    CustomLRScheduler:
+      mode: MulitStepLR
+      verbose: True
+      sections:
+        section_1:
+          start: 0
+          end: 5
+          lr: 1e-3
+        section_2:
+          start: 5
+          end: 10
+          lr: 1e-5
+        section_3:
+          start: 10
+          end: 15
+          lr: 5e-7
+        section_4:
+          start: 15
+          end: *epochs
+          lr: 1e-7
+      # filename_format: <your format>         # Enable to custom filename. Default: <model-name>-<model-version>-<epochs>-<moniter-value>
+  # config:                                    # Enable this section when required.
+    # detail_config: "some config"
+    
+model_candidates:
+  leader_boader_url:                           # URL of time series forecasting models' leader board
+    https://paperswithcode.com/task/time-series-forecasting
+  default_content: &default                    # Default configurations
+    url: https://url.url/                      # URL placeholder
+    Descriptions: >
+      <Short Descriptions>.
+    configs:                                   # Configuration placeholder
+     parameters: values
+  GenF: 
+    <<: *default
+    url: https://arxiv.org/abs/2212.06142
+    Descriptions: >
+      A model combine CWGAN-TS and Transformer-based predictor.
+      Aiming for a better long-term forecasting performance.
+    configs: 
+      Generator:
+        embedding_depth: 10
+        # TBA
+      Discriminator:
+        embedding_depth: 10
+        # TBA
+  LSTNet:
+    <<: *default
+    url: https://arxiv.org/abs/1703.07015
+    Description: >
+      A model with CNN, GRU, and skip-RNN for time series foresting.
+      Aiming for catching long-term history using CNN and skip-RNN.
+    configs:
+      Gradient_Clip: 10                        # Specify the bound of gradient clipping.
+      CNN:
+        input_channels: 1
+        output_channels: 100
+        kernel_size: 6
+        # TBA
+      GRU: 
+        hidden_dim: 100
+        # TBA
+      Skip-RNN:
+        skip: 24                               # Leave it zero if no going to use.
+        hidden_dim: 5
+        # TBA
+      Highway:
+        window_size: 24                        # Leave it zero if no going to use.
+      output_fn: sigmoid
+  DeepAR:
+    <<: *default
+  Informer:
+    <<: *default
+  TMSTL:
+    <<: *default
+  LogSparse:
+    <<: *default
+
+data_info:                                     # Configuration about the dataset
+  ETTh1:
+    data_dir: /root/workplace/Autoformer/dataset/ETT-small/ETTh1.csv 
+    multi_file: False
+    format: csv
+  
+  ETTm1:
+    data_dir: /root/workplace/Autoformer/dataset/ETT-small/ETTm1.csv 
+    multi_file: False
+    format: csv
+
+  HomeC:
+    data_dir: C:/seneschal_gitlab/seneschal/data/HomeC_aggregated_gen_15f.parquet
+    multi_file: False
+    format: parquet
+    float_features: 
+      - 'humidity'
+      - 'visibility'
+      - 'pressure'
+      - 'windSpeed'
+      - 'cloudCover'
+      - 'windBearing'
+      - 'dewPoint'
+      - 'precipProbability'
+      - 'month'
+      - 'day'
+      - 'weekday'
+      - 'weekofyear'
+      - 'hour'
+      - 'minute'
+      - 'gen'

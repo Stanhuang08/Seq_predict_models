@@ -1,0 +1,53 @@
+# Configuration about data preprocessing
+data: Machine_Util
+target: m_2                                  # Specify the target to use; only used in M, MS mood
+features: "S"                                # M:multivariate predict multivariate, S:univariate predict univariate, MS:multivariate predict univariate
+seq_len: 72                                  # Length of input series
+label_len: 6                                 # Length of label in input series' tail
+pred_len: 12                                 # Length of predict series
+freq: "s"
+scale: True
+standardlize_method: "MinMax"                # If scale==True, choose 'Standard' or 'MinMax'
+num_workers: 6
+
+# Configuration about the structure of model and the hyperparameters
+is_training: 1
+model_id: "1222"
+task_id: "exp2huber0.8"                    # task id
+model: "PatchTST"                            # Specify the model framework to use
+learning_rate: 0.0001
+loss: "HuberLoss"
+delta: 0.8                                   # only for Huber loss
+batch_size: 128
+dropout: 0.05                                # Dropout rate
+fc_dropout: 0.2                              # fully connected dropout
+head_dropout: 0.0                            # head dropout
+patch_len: 4                                 # patch length
+stride: 8                                    # stride
+decomposition: 0                             # decomposition; True 1 False 0
+kernel_size: 25                              # decomposition-kernel
+individual: 0                                # individual head; True 1 False 0
+activation: "gelu"
+c_out: 1                                     # Output feature number
+e_layers: 4                                  # encoder_layers
+enc_in: 1                                    # encoder_input_size
+
+# Configuration about training and pedrict, test_ratio is (1 - train_ratio - vali_ratio), so no need to specify test_ratio
+train_ratio: 0.7
+vali_ratio: 0.2
+train_epochs: 100
+itr: 1                                       # Number of experiment times  
+patience: 5                                  # early stopping patience                                                             
+detail_freq: "s"
+
+# Configuration about the dataset
+root_path: ./dataset/Machine_Util/           # root path of the data file
+data_path: machine_util_m_2.csv              # data file
+
+
+# optional settings, not needed most of the time
+random_seed: 2021                            
+do_predict: False
+lradj: "type3"
+regularization: False
+lambda_l1: 0.1
